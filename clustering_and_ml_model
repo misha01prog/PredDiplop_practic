@@ -1,0 +1,63 @@
+# импортируем необходимые библиотеки
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+import numpy as np
+import matplotlib.pyplot as plt
+
+# загружаем данные, содержащие информацию о пользователях
+data = pd.read_csv('/content/data_classified.csv')
+
+data = data.drop(columns=['Unnamed: 0'])
+
+data.head()
+
+plt.scatter(data.Weight, data.PushUp)
+
+import seaborn as sns
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+# матрица корреляции
+corr_matrix = data.corr()
+sns.heatmap(corr_matrix, annot=True)
+
+# масштабирование данных
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(data)
+
+# кластеризация методом k-means
+kmeans = KMeans(n_clusters=3, random_state=42)
+kmeans.fit(scaled_data)
+labels = kmeans.labels_
+
+# визуализация результатов кластеризации
+sns.scatterplot(x=scaled_data[:, 0], y=scaled_data[:, 1], hue=labels)
+
+data['Class'] = pd.Series(kmeans.predict(scaled_data))
+
+data.head()
+
+data.to_csv('data_classified.csv')
+
+# разделяем данные на обучающую и тестовую выборки
+X = data.drop(['PushUp', 'PullUp'], axis=1) # признаки
+y = data[['PushUp', 'PullUp']] # целевые переменные
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# обучаем модель случайного леса на обучающей выборке
+model = RandomForestRegressor(n_estimators=100)
+model.fit(X_train, y_train)
+
+# делаем предсказания на тестовой выборке
+y_pred = model.predict(X_test)
+
+# оцениваем точность модели
+score = model.score(X_test, y_test)
+print("Точность модели: {:.2f}".format(score))
+
+# предсказываем количество отжиманий, подтягиваний и приседаний для нового пользователя
+new_user = pd.DataFrame({'Age': [24], 'Sex': [1], 'Height': [175], 'Weight': [60], 'ProcFat': [2], 'Sleep': [8], 'Class': [2]})
+predicted = model.predict(new_user)
+print("Предсказанное количество отжиманий и подтягиваний: ")
+print(predicted)
